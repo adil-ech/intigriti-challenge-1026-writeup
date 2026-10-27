@@ -74,6 +74,29 @@ The observed application rejects a repeated code when it is applied immediately 
 
 The behavior is consistent with duplicate checking that considers only the most recently applied promotion instead of the complete set of promotions already on the cart. That is an inference from the reproducible application behavior; the available evidence does not establish the exact backend implementation.
 
+## Relevant client-side source
+
+The supplied `app.js` helps locate the trust boundary, but it does **not** include the vulnerable coupon-validation implementation. The coupon handler sends the entered code to the API and then replaces the browser's cart state with the API response:
+
+```js
+const payload = await api("/api/cart/coupon", {
+  method: "POST",
+  body: JSON.stringify({ code: input.value.trim() }),
+});
+state.cart = payload.cart;
+renderCart();
+```
+
+The cart renderer displays a multiplicity already present in the returned promotion object:
+
+```js
+`Promotion ${escapeHtml(promotion.code)} · ${promotion.percent}% off${
+  promotion.count > 1 ? ` × ${promotion.count}` : ""
+}`
+```
+
+These excerpts explain why the browser can show `× 2`, but they do not establish how the server decided to accept each application. The actual coupon endpoint implementation is not present in the supplied source. Therefore, the alternating-reuse behavior is demonstrated by the challenge run, while the “checks only the most recent code” explanation above remains a plausible root-cause inference—not a source-confirmed fact.
+
 ## Impact in the CTF
 
 The sequence bypasses the challenge store’s apparent one-use-per-code rule, discounts the eligible item by 100%, and reaches the challenge’s flag-bearing checkout confirmation. This is proof of the intended CTF solution only; it does not demonstrate impact on a real-world store.
